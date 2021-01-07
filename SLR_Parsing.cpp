@@ -1,523 +1,683 @@
-#include <iostream>
-#include <string.h>
-#include <stdlib.h>
-#include <stdio.h>
 
-using namespace std;
+#include<stdio.h>
+#include<ctype.h>
+#include<conio.h>
+#include<stdlib.h>
+#include<string.h>
+#include<iostream.h>
 
-char terminals[100] = {};
-int no_t;
-char non_terminals[100] = {};
-int no_nt;
-char goto_table[100][100];
-char reduce[20][20];
-char follow[20][20];
-char fo_co[20][20];
-char first[20][20];
+#define epsilon '^'
 
-struct state
+// since I didn't know how to type epsilon symbol  temporily I am using ^
+
+char prod[20][20],T[20],NT[20],c[10][10],foll[10][10],fir[10][10];
+int tt,tnt,tp,a;
+int follow[20][20],first[20][20];
+void first_of(char);
+int count(int j);
+void rhs(int j);
+void read_tnt();
+int rhs(int j);
+
+void read_tnt()
 {
-    int prod_count;
-    char prod[100][100] = {{}};
+cout<<"For SLR parser: ";
+cout<<"\nEnter number of terminals: ";
+cin>>tt;
+cout<<"\nEnter terminals: ";
+for(int i=0;i<tt;i++)
+  T[i]=getche();
+getch();
+cout<<"\nEnter number of Non-terminals: ";
+cin>>tnt;
+cout<<"\nEnter Non-terminals: ";
+for(i=0;i<tnt;i++)
+  NT[i]=getche();
+getch();
+}
+
+void read_prod()
+{
+int j;
+char x=0;
+cout<<"\n\nEnter number of productions: ";
+cin>>tp;
+cout<<"\n Enter productions: ";
+for(int i=0;i<tp;i++)
+{
+  j=x=0;
+  while(x!='\r')
+  {
+   prod[i][j]=x=getche();
+   j++;
+  }
+  cout<<"\n";
+}
+getch();
+}
+
+int nt_no(char n)
+{
+for(int i=0;i<tnt;i++)
+if(NT[i]==n)
+   return(i);
+return(-1);
+}
+
+int t_no(char t)
+{
+for(int i=0;i<tt;i++)
+if(T[i]==t)
+  return(i);
+if(t=='$')
+  return(tt);
+return(-1);
+}
+
+int terminal(char x)
+{
+for(int i=0;i<tt;i++)
+if(T[i]==x)
+   return(1);
+return(0);
+}
+
+int nonterminal(char x)
+{
+for(int i=0;i<tnt;i++)
+if(NT[i]==x)
+  return(1);
+return(0);
+}
+
+int in_rhs(char *s,char x)
+{
+for(int i=0;i<=strlen(s);i++)
+if(*(s+i)==x)
+  return(i);
+return(-1);
+}
+
+void find_first()
+{
+for(int i=0;i<tnt;i++)
+  first_of(NT[i]);
+}
+
+void first_of(char n)
+{
+int t1,t2,p1,cnt=0,i,j;
+char x;
+static int over[20];
+p1=t_no(epsilon);
+if(terminal(n))
+   return;
+t1=nt_no(n);
+if(over[t1])
+  return;
+over[t1]=1;
+for(i=0;i<tp;i++)
+{
+  t1=nt_no(prod[i][0]);
+  if(prod[i][0]==n)
+  {
+   int k=0;
+   cnt=count(1);
+   rhs(i);
+   while(k<cnt)
+   {
+    x=c[i][k];
+    if(terminal(x))
+    {
+	 t2=t_no(x);
+	 first[t1][t2]=1;
+	 break;
+    }
+    else
+    {
+	 t2=nt_no(x);
+	 first_of(x);
+	 for(int j=0;j<tt;j++)
+	  if(p1!=j && first[t2][j])
+	    first[t1][j]=1;
+	  if(p1!=-1 && first[t2][p1])
+	    k++;
+	  else
+	    break;
+	 }
+   }
+   if(p1!=-1 && k>=cnt)
+	 first[t1][p1]=1;
+  }
+}
+}
+
+void follow_of(char n)
+{
+int f,t1,t2,p1,t,cnt=0;
+char x,beta;
+static int over[20];
+p1=t_no(epsilon);
+t1=nt_no(n);
+if(over[t1])
+  return;
+over[t1]=1;
+if(NT[0]==n)
+  follow[nt_no(NT[0])][tt]=1;
+for(int i=0;i<tp;i++)
+{
+  rhs(i);
+  cnt=count(i);
+  t=in_rhs(c[i],n);
+  if(t==-1)
+   continue;
+  for(int k=t+1;k<=cnt;k++)
+  {
+   rhs(i);
+   beta=c[i][k];
+   if(terminal(beta))
+   {
+    t2=t_no(beta);
+    follow[t1][t2]=1;
+    break;
+   }
+   int bno;
+   for(int j=0;j<tt;j++)
+   {
+    bno=nt_no(beta);
+    if((first[bno][j]) && (j!=p1))
+	  follow[t1][j]=1;
+   }
+   if((p1!=-1) && (first[bno][p1]==1))
+	 continue;
+   else if((t==(cnt-1)||(k>=cnt)))
+   {
+    follow_of(prod[i][0]);
+    t1=nt_no(prod[i][0]);
+    for(int l=0;l<=tt+1;l++)
+    if(follow[t][l])
+	  follow[t1][l]=1;
+   }
+  }
+}
+}
+
+int count(int j)
+{
+int c1=0;
+for(int q=3;prod[j][q]!='\r';q++)
+  c1++;
+return(c1);
+}
+
+void rhs(int j)
+{
+int a,h=0;
+a=j;
+for(int q=3;prod[j][q]!='\r';q++)
+{
+  c[a][h]=prod[j][q];
+  h++;
+}
+}
+
+void find_follow()
+{
+for(int i=0;i<tnt;i++)
+  follow_of(NT[i]);
+}
+
+void show_follow()
+{
+int b=0;
+a=0;
+cout<<"\n\n Follow Table For Grammar: \n";
+for(int i=0;i<tnt;i++)
+{
+  b=0;
+  cout<<"\n FOLLOW ("<<NT[i]<<" )= { ";
+  for(int j=0;j<tt+1;j++)
+   if(follow[i][j] && j!=tt)
+   {
+    foll[a][b]=T[j];
+    b++;
+    cout<<T[j]<<" ";
+   }
+   else
+    if(j==tt)
+    {
+	 foll[a][b]='$';
+	 b++;
+	 cout<<'$';
+    }
+    a++;
+    cout<<" } ";
+   }
+  getch();
+}
+void show_first()
+{
+int b=0;
+a=0;
+cout<<"\n\n First Table For Grammar: \n";
+for(int i=0;i<tnt;i++)
+{
+  b=0;
+  cout<<"\n FIRST ("<<NT[i]<<" )= { ";
+  for(int j=0;j<tt+1;j++)
+   if(first[i][j] && j!=tt)
+   {
+    fir[a][b]=T[j];
+    b++;
+    cout<<T[j]<<" ";
+   }
+    a++;
+    cout<<" } ";
+   }
+  getch();
+}
+
+void mainf(void)
+{
+clrscr();
+read_tnt();
+read_prod();
+find_first();
+find_follow();
+show_follow();
+  show_first();
+}
+
+To construct parse table:
+
+#include<stdio.h>
+#include<conio.h>
+#include<string.h>
+#include<ctype.h>
+#include<stdlib.h>
+#include<iostream.h>
+
+#include"c:\tc\bin\SLR.h"
+
+int S=0,i=0,j=0,state[20];
+char TNT[15];
+
+struct node
+{
+int pno,dpos;
 };
-
-void add_dots(struct state *I)
+struct t
 {
-    for (int i = 0; i < I->prod_count; i++)
-    {
-        for (int j = 99; j > 3; j--)
-            I->prod[i][j] = I->prod[i][j - 1];
-        I->prod[i][3] = '.';
-    }
+char s;
+int n;
+};
+struct t1
+{
+struct t lr[10];
+int gr[5];
+};
+struct t1 action[15];
+struct node closure[10][10];
+int g[15][10];
+int l;
+
+void sclosure(int,int);
+int added(int);
+int t_into(char);
+void print_table(int);
+void parser(void);
+int find_index(char);
+int t_ino(char);
+void pop(void);
+
+void push(char,int);
+void find_closure(int,int);
+void SLR(void);
+
+void main()
+{
+clrscr();
+mainf();
+getch();
+for(int i=0;i<tnt;i++)
+  TNT[i]=NT[i];
+for(int j=0;j<tt;j++)
+{
+  TNT[i]=T[j];
+  i++;
+}
+strcat(T,"$");
+i=j=0;
+SLR();
+print_table(S);
+getch();
+// clrscr();
+// parser();
+// getch();
 }
 
-void augument(struct state *S, struct state *I)
+void SLR()
 {
-    if (I->prod[0][0] == 'S')
-        strcpy(S->prod[0], "Z->.S");
+int clno,no=0,x,y,z,len,cnt=-1,d=0;
+closure[i][j].pno=0;
+closure[i][j++].dpos=3;
+find_closure(no,3);
+sclosure(i,j);
+state[i]=j;
+S=0;
+do
+{
+  cnt++;
+  z=state[cnt];
+  for(int k=0;k<tnt+tt;k++)
+  {
+   i++;
+   j=0;d=0;
+   for(int l=0;l<z;l++)
+   {
+    x=closure[cnt][1].pno;
+    y=closure[cnt][1].dpos;
+    if(prod[x][y]==TNT[k])
+    {
+	 d=1;
+	 closure[i][j].pno=x;
+	 closure[i][j++].dpos=++y;
+	 if((y<strlen(prod[x])) && (isupper(prod[x][y])))
+	   find_closure(x,y);
+    }
+   }
+   if(d==0)
+   {
+    i--;
+    continue;
+   }
+   sclosure(i,j);
+   state[i]=j;
+   clno=added(i-1);
+   if(clno==-1)
+    clno=i;
+   if(isupper(TNT[k]))
+    action[cnt].gr[k]=clno;
+   else
+   {
+    action[cnt].lr[k-tnt].s='S';
+    action[cnt].lr[k-tnt].n=clno;
+   }
+   if(added(i-1)!=-1)
+    i--;
+   else
+   {
+    S++;
+    for(l=0;l<state[i];l++)
+    {
+	 if(closure[i][1].pno==0)
+	 {
+	  action[i].lr[tt].s='A';
+	  continue;
+	 }
+	 len=(strlen(prod[closure[i][l].pno])-1);
+	 if(len==closure[i][l].dpos)
+	 {
+	  char v=prod[closure[i][l].pno][0];
+	  int u=nt_no(v);
+	  for(x=0;x<strlen(foll[u]);x++)
+	  {
+	   int w=t_ino(foll[u][x]);
+	   action[i].lr[w].s='R';
+	   action[i].lr[w].n=closure[i][l].pno;
+	  }
+	 }
+    }
+   }
+  }
+}
+while(cnt!=S);
+}
+
+void print_table(int states)
+{
+int lin=5;
+cout<<"\n\n Parser Table: \n";
+for(int i=0;i<tt;i++)
+  cout<<"\t"<<T[i];
+  cout<<"\t$";
+for(i=0;i<tnt;i++)
+   cout<<"\t"<<NT[i];
+  cout<<"\n______________________________________________________________\n";
+  for(i=0;i<=states;i++)
+  {
+   gotoxy(l,lin);
+   cout<<"I"<<i<<"\t";
+   for(int j=0;j<=tt;j++)
+   {
+    if(action[i].lr[j].s!='\x0')
+    {
+	 if(action[i].lr[j].s=='A')
+	 {
+	  cout<<"Acc";
+	  continue;
+	 }
+	 cout<<action[i].lr[j].s;
+	 cout<<action[i].lr[j].n;
+	 cout<<"\t";
+    }
     else
+	 cout<<"\t";
+   }
+   for(j=0;j<tnt;j++)
+    if(action[i].gr[j])
     {
-        strcpy(S->prod[0], "S->.");
-        S->prod[0][4] = I->prod[0][0];
+	 cout<<action[i].gr[j];
+	 cout<<"\t";
     }
-    S->prod_count++;
-}
-
-void get_prods(struct state *I)
-{
-    cout << "Enter the number of productions:\n";
-    cin >> I->prod_count;
-    cout << "Enter the number of non terminals:" << endl;
-    cin >> no_nt;
-    cout << "Enter the non terminals one by one:" << endl;
-    for (int i = 0; i < no_nt; i++)
-        cin >> non_terminals[i];
-    cout << "Enter the number of terminals:" << endl;
-    cin >> no_t;
-    cout << "Enter the terminals (single lettered) one by one:" << endl;
-    for (int i = 0; i < no_t; i++)
-        cin >> terminals[i];
-    cout << "Enter the productions one by one in form (S->ABc):\n";
-    for (int i = 0; i < I->prod_count; i++)
-    {
-        cin >> I->prod[i];
-    }
-}
-
-bool is_non_terminal(char a)
-{
-    if (a >= 'A' && a <= 'Z')
-        return true;
     else
-        return false;
+	 cout<<"\t";
+    lin++;
+    cout<<"\n";
+   }
+   cout<<"\n______________________________________________________";
 }
-
-bool in_state(struct state *I, char *a)
+void sclosure(int clno,int prodno)
 {
-    for (int i = 0; i < I->prod_count; i++)
+  struct node temp;
+  for(int i=0;i<prodno-1;i++)
+  {
+   for(int j=i+1;j<prodno;j++)
+   {
+    if(closure[clno][i].pno>closure[clno][j].pno)
     {
-        if (!strcmp(I->prod[i], a))
-            return true;
+	 temp=closure[clno][i];
+	 closure[clno][i]=closure[clno][j];
+	 closure[clno][j]=temp;
     }
-    return false;
-}
-
-char char_after_dot(char a[100])
-{
-    char b;
-    for (int i = 0; i < strlen(a); i++)
-        if (a[i] == '.')
-        {
-            b = a[i + 1];
-            return b;
-        }
-}
-
-char *move_dot(char b[100], int len)
-{
-    char a[100] = {};
-    strcpy(a, b);
-    for (int i = 0; i < len; i++)
+   }
+  }
+  for(i=0;i<prodno-1;i++)
+  {
+   for(j=i+1;j<prodno;j++)
+   {
+    if((closure[clno][i].dpos>closure[clno][j].dpos) &&
+	   (closure[clno][i].pno==closure[clno][j].pno))
     {
-        if (a[i] == '.')
-        {
-            swap(a[i], a[i + 1]);
-            break;
-        }
+	 temp=closure[clno][i];
+	 closure[clno][i]=closure[clno][j];
+	 closure[clno][j]=temp;
     }
-    return &a[0];
+   }
+  }
 }
 
-bool same_state(struct state *I0, struct state *I)
+int added(int n)
 {
-
-    if (I0->prod_count != I->prod_count)
-        return false;
-
-    for (int i = 0; i < I0->prod_count; i++)
+  int d=1;
+  for(int k=0;k<=n;k++)
+  {
+   if(state[k]==state[n+1])
+   {
+    d=0;
+    for(int j=0;j<state[k];j++)
     {
-        int flag = 0;
-        for (int j = 0; j < I->prod_count; j++)
-            if (strcmp(I0->prod[i], I->prod[j]) == 0)
-                flag = 1;
-        if (flag == 0)
-            return false;
+	 if((closure[k][j].pno!=closure[n+1][j].pno) ||
+	    (closure[k][j].dpos!=closure[n+1][j].dpos))
+	   break;
+	 else
+	   d++;
     }
-    return true;
+    if(d==state[k])
+	  return(k);
+   }
+  }
+  return(-1);
 }
 
-void closure(struct state *I, struct state *I0)
+void find_closure(int no,int dp)
 {
-    char a = {};
-    for (int i = 0; i < I0->prod_count; i++)
+  int k;
+  char temp[5];
+  if(isupper(prod[no][dp]))
+  {
+   for(k=0;k<tp;k++)
+   {
+    if(prod[k][0]==prod[no][dp])
     {
-        a = char_after_dot(I0->prod[i]);
-        if (is_non_terminal(a))
-        {
-            for (int j = 0; j < I->prod_count; j++)
-            {
-                if (I->prod[j][0] == a)
-                {
-                    if (!in_state(I0, I->prod[j]))
-                    {
-                        strcpy(I0->prod[I0->prod_count], I->prod[j]);
-                        I0->prod_count++;
-                    }
-                }
-            }
-        }
+	 closure[i][j].pno=k;
+	 closure[i][j++].dpos=3;
+	 if(isupper(prod[k][3])&&
+	   (prod[k][3]!=prod[k][0]))
+	   find_closure(k,3);
     }
+   }
+  }
+  return;
 }
 
-void goto_state(struct state *I, struct state *S, char a)
+int t_ino(char t)
 {
-    int time = 1;
-    for (int i = 0; i < I->prod_count; i++)
-    {
-        if (char_after_dot(I->prod[i]) == a)
-        {
-            if (time == 1)
-            {
-                time++;
-            }
-            strcpy(S->prod[S->prod_count], move_dot(I->prod[i], strlen(I->prod[i])));
-            S->prod_count++;
-        }
-    }
+  for(int i=0;i<=tt;i++)
+   if(T[i]==t)
+    return(i);
+  return(-1);
 }
 
-void print_prods(struct state *I)
+char pops2;
+struct node1
 {
-    for (int i = 0; i < I->prod_count; i++)
-        printf("%s\n", I->prod[i]);
-    cout << endl;
-}
+  char s2;int s1;
+};
+struct node1 stack[10];
+int pops1,top=0;
 
-bool in_array(char a[20], char b)
+void parser(void)
 {
-    for (int i = 0; i < strlen(a); i++)
-        if (a[i] == b)
-            return true;
-    return false;
+  int r,c;
+  struct t lr[10];
+  char t,acc='f',str[10];
+  cout<<"Enter I/p String To Parse: ";
+  cin>>str;
+  strcat(str,"$");
+  stack[0].s1=0;
+  stack[0].s2='\n';
+  cout<<"\n\n STACK";
+  cout<<"\t\t INPUT";
+  cout<<"\t\t ACTION";
+  cout<<"\n =====";
+  cout<<"\t\t =======";
+  cout<<"\t\t =======";
+  i=0;
+  cout<<"\n";
+  cout<<stack[top].s1;
+  cout<<" \t\t\t ";
+  for(int j=0;j<strlen(str);j++)
+   cout<<str[j];
+  do
+  {
+   r=stack[top].s1;
+   c=find_index(str[i]);
+   if(c==-1)
+    cout<<"\n Error! Invalid String!";
+   return;
+  }
+  while(top!=0);
+  switch(action[r],lr[c].s)
+  {
+  case 'S':
+		 {
+		   push(str[i],action[r].lr[c].n);
+		   i++;
+		   cout<<"\t\t\t Shift";
+		   break;
+		  }
+  case 'R':
+		 {
+		  t=prod[action[r].lr[c].n][3];
+		  do
+		  {
+		   pop();
+		  }
+		  while(pops2!=t);
+		  t=prod[action[r].lr[c].n][0];
+		  r=stack[top].s1;
+		  c=find_index(t);
+		  push(t,action[r].gr[c-tt-1]);
+		  cout<<"\t\t\t Reduce";
+		  break;
+		 }
+  case 'A':
+		 {
+		  cout<<"\t\t\t Accept";
+		  cout<<"\n\n\n String accepted";
+		  acc='t';
+		  getch();
+		  return;
+		 }
+  default:
+		 {
+		  cout<<"\n\n\n Error! String not accepted!";
+		  getch();
+		  exit(0);
+		 }
+}
+for(j=0;j<=top;j++)
+  cout<<stack[j].s2<<stack[j].s1;
+if(top<4)
+  cout<<"\t\t\t";
+else
+  cout<<"\t\t";
+for(j=i;j<strlen(str);j++)
+  cout<<str[j];
+if(acc=='t')
+  return;
 }
 
-char *chars_after_dots(struct state *I)
+int find_index(char temp)
 {
-    char a[20] = {};
-    for (int i = 0; i < I->prod_count; i++)
-    {
-        if (!in_array(a, char_after_dot(I->prod[i])))
-        {
-            a[strlen(a)] = char_after_dot(I->prod[i]);
-        }
-    }
-    return &a[0];
-}
-
-void cleanup_prods(struct state *I)
+for(int i=0;i<=tt+tnt;i++)
 {
-    char a[100] = {};
-    for (int i = 0; i < I->prod_count; i++)
-        strcpy(I->prod[i], a);
-    I->prod_count = 0;
+  if(i<=tt)
+  {
+   if(T[i]==temp)
+    return(i);
+  }
+  else
+   if(NT[i-tt-1]==temp)
+    return(i);
+}
+return(-1);
 }
 
-int return_index(char a)
+void push(char t2,int t1)
 {
-    for (int i = 0; i < no_t; i++)
-        if (terminals[i] == a)
-            return i;
-    for (int i = 0; i < no_nt; i++)
-        if (non_terminals[i] == a)
-            return no_t + i;
+++top;
+stack[top].s1=t1;
+stack[top].s2=t2;
+return;
 }
 
-void print_shift_table(int state_count)
+void pop(void)
 {
-    cout << endl
-         << "********Shift Actions*********" << endl
-         << endl;
-    cout << "\t";
-    for (int i = 0; i < no_t; i++)
-        cout << terminals[i] << "\t";
-    for (int i = 0; i < no_nt; i++)
-        cout << non_terminals[i] << "\t";
-    cout << endl;
-    for (int i = 0; i < state_count; i++)
-    {
-        int arr[no_nt + no_t] = {-1};
-        for (int j = 0; j < state_count; j++)
-        {
-            if (goto_table[i][j] != '~')
-            {
-                arr[return_index(goto_table[i][j])] = j;
-            }
-        }
-        cout << "I" << i << "\t";
-        for (int j = 0; j < no_nt + no_t; j++)
-        {
-            if (i == 1 && j == no_t - 1)
-                cout << "ACC"
-                     << "\t";
-            if (arr[j] == -1 || arr[j] == 0)
-                cout << "\t";
-            else
-            {
-                if (j < no_t)
-                    cout << "S" << arr[j] << "\t";
-                else
-                    cout << arr[j] << "\t";
-            }
-        }
-        cout << "\n";
-    }
-}
+pops1=stack[top].s1;
+pops2=stack[top].s2;
+--top;
+return;  }
 
-int get_index(char c, char *a)
-{
-    for (int i = 0; i < strlen(a); i++)
-        if (a[i] == c)
-            return i;
-}
 
-void add_dot_at_end(struct state *I)
-{
-    for (int i = 0; i < I->prod_count; i++)
-    {
-        strcat(I->prod[i], ".");
-    }
-}
-
-void add_to_first(int n, char b)
-{
-    for (int i = 0; i < strlen(first[n]); i++)
-        if (first[n][i] == b)
-            return;
-    first[n][strlen(first[n])] = b;
-}
-
-void add_to_first(int m, int n)
-{
-    for (int i = 0; i < strlen(first[n]); i++)
-    {
-        int flag = 0;
-        for (int j = 0; j < strlen(first[m]); j++)
-        {
-            if (first[n][i] == first[m][j])
-                flag = 1;
-        }
-        if (flag == 0)
-            add_to_first(m, first[n][i]);
-    }
-}
-
-void add_to_follow(int n, char b)
-{
-    for (int i = 0; i < strlen(follow[n]); i++)
-        if (follow[n][i] == b)
-            return;
-    follow[n][strlen(follow[n])] = b;
-}
-
-void add_to_follow(int m, int n)
-{
-    for (int i = 0; i < strlen(follow[n]); i++)
-    {
-        int flag = 0;
-        for (int j = 0; j < strlen(follow[m]); j++)
-        {
-            if (follow[n][i] == follow[m][j])
-                flag = 1;
-        }
-        if (flag == 0)
-            add_to_follow(m, follow[n][i]);
-    }
-}
-
-void add_to_follow_first(int m, int n)
-{
-    for (int i = 0; i < strlen(first[n]); i++)
-    {
-        int flag = 0;
-        for (int j = 0; j < strlen(follow[m]); j++)
-        {
-            if (first[n][i] == follow[m][j])
-                flag = 1;
-        }
-        if (flag == 0)
-            add_to_follow(m, first[n][i]);
-    }
-}
-
-void find_first(struct state *I)
-{
-    for (int i = 0; i < no_nt; i++)
-    {
-        for (int j = 0; j < I->prod_count; j++)
-        {
-            if (I->prod[j][0] == non_terminals[i])
-            {
-                if (!is_non_terminal(I->prod[j][3]))
-                {
-                    add_to_first(i, I->prod[j][3]);
-                }
-            }
-        }
-    }
-}
-
-void find_follow(struct state *I)
-{
-    for (int i = 0; i < no_nt; i++)
-    {
-        for (int j = 0; j < I->prod_count; j++)
-        {
-            for (int k = 3; k < strlen(I->prod[j]); k++)
-            {
-                if (I->prod[j][k] == non_terminals[i])
-                {
-                    if (I->prod[j][k + 1] != '\0')
-                    {
-                        if (!is_non_terminal(I->prod[j][k + 1]))
-                        {
-                            add_to_follow(i, I->prod[j][k + 1]);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-int get_index(int *arr, int n)
-{
-    for (int i = 0; i < no_t; i++)
-    {
-        if (arr[i] == n)
-            return i;
-    }
-    return -1;
-}
-
-void print_reduce_table(int state_count, int *no_re, struct state *temp1)
-{
-    cout << "**********Reduce actions**********" << endl
-         << endl;
-    cout << "\t";
-    int arr[temp1->prod_count][no_t] = {-1};
-    for (int i = 0; i < no_t; i++)
-    {
-        cout << terminals[i] << "\t";
-    }
-    cout << endl;
-    for (int i = 0; i < temp1->prod_count; i++)
-    {
-        int n = no_re[i];
-        for (int j = 0; j < strlen(follow[return_index(temp1->prod[i][0]) - no_t]); j++)
-        {
-            for (int k = 0; k < no_t; k++)
-            {
-                if (follow[return_index(temp1->prod[i][0]) - no_t][j] == terminals[k])
-                    arr[i][k] = i + 1;
-            }
-        }
-        cout << "I" << n << "\t";
-        for (int j = 0; j < no_t; j++)
-        {
-            if (arr[i][j] != -1 && arr[i][j] != 0 && arr[i][j] < state_count)
-                cout << "R" << arr[i][j] << "\t";
-            else
-                cout << "\t";
-        }
-        cout << endl;
-    }
-}
-
-int main()
-{
-    cout<<"Name: Tushar Kamboj"<<endl;
-    cout<<"Roll No: 1816110225"<<endl;
-    struct state init;
-    struct state temp;
-    struct state temp1;
-    int state_count = 1;
-    get_prods(&init);
-    temp = init;
-    temp1 = temp;
-    add_dots(&init);
-
-    for (int i = 0; i < 100; i++)
-        for (int j = 0; j < 100; j++)
-            goto_table[i][j] = '~';
-
-    struct state I[50];
-    augument(&I[0], &init);
-    closure(&init, &I[0]);
-    cout << "\nI0:\n";
-    print_prods(&I[0]);
-
-    char characters[20] = {};
-    for (int i = 0; i < state_count; i++)
-    {
-        char characters[20] = {};
-        for (int z = 0; z < I[i].prod_count; z++)
-            if (!in_array(characters, char_after_dot(I[i].prod[z])))
-                characters[strlen(characters)] = char_after_dot(I[i].prod[z]);
-
-        for (int j = 0; j < strlen(characters); j++)
-        {
-            goto_state(&I[i], &I[state_count], characters[j]);
-            closure(&init, &I[state_count]);
-            int flag = 0;
-            for (int k = 0; k < state_count - 1; k++)
-            {
-                if (same_state(&I[k], &I[state_count]))
-                {
-                    cleanup_prods(&I[state_count]);
-                    flag = 1;
-                    cout << "I" << i << " on reading the symbol " << characters[j] << " goes to I" << k << ".\n";
-                    goto_table[i][k] = characters[j];
-                    ;
-                    break;
-                }
-            }
-            if (flag == 0)
-            {
-                state_count++;
-                cout << "I" << i << " on reading the symbol " << characters[j] << " goes to I" << state_count - 1 << ":\n";
-                goto_table[i][state_count - 1] = characters[j];
-                print_prods(&I[state_count - 1]);
-            }
-        }
-    }
-
-    int no_re[temp.prod_count] = {-1};
-    terminals[no_t] = '$';
-    no_t++;
-
-    add_dot_at_end(&temp1);
-    for (int i = 0; i < state_count; i++)
-    {
-        for (int j = 0; j < I[i].prod_count; j++)
-            for (int k = 0; k < temp1.prod_count; k++)
-                if (in_state(&I[i], temp1.prod[k]))
-                    no_re[k] = i;
-    }
-
-    find_first(&temp);
-    for (int l = 0; l < no_nt; l++)
-    {
-        for (int i = 0; i < temp.prod_count; i++)
-        {
-            if (is_non_terminal(temp.prod[i][3]))
-            {
-                add_to_first(return_index(temp.prod[i][0]) - no_t, return_index(temp.prod[i][3]) - no_t);
-            }
-        }
-    }
-
-    find_follow(&temp);
-    add_to_follow(0, '$');
-    for (int l = 0; l < no_nt; l++)
-    {
-        for (int i = 0; i < temp.prod_count; i++)
-        {
-            for (int k = 3; k < strlen(temp.prod[i]); k++)
-            {
-                if (temp.prod[i][k] == non_terminals[l])
-                {
-                    if (is_non_terminal(temp.prod[i][k + 1]))
-                    {
-                        add_to_follow_first(l, return_index(temp.prod[i][k + 1]) - no_t);
-                    }
-                    if (temp.prod[i][k + 1] == '\0')
-                        add_to_follow(l, return_index(temp.prod[i][0]) - no_t);
-                }
-            }
-        }
-    }
-    print_shift_table(state_count);
-    cout << endl
-         << endl;
-    print_reduce_table(state_count, &no_re[0], &temp1);
-}
