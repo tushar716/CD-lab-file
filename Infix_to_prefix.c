@@ -1,103 +1,60 @@
-#include <stdio.h>
-#include <string.h>
+# include <stdio.h>
+# include <string.h>
+# define MAX 20
+void infixtoprefix(char infix[20],char prefix[20]);
+void reverse(char array[30]);
+char pop();
+void push(char symbol);
+int isOperator(char symbol);
+int prcd(symbol);
+int top=-1;
+char stack[MAX];
+main() {
+	char infix[20],prefix[20],temp;
+	printf("Enter infix operation: ");
+	gets(infix);
+	infixtoprefix(infix,prefix);
+	reverse(prefix);
+	puts((prefix));
 
-char str1[] = "A+(C*D)*F";
-char str[] = "F*(D*C)+A";
-char stack[10];
-int top = -1;
-
-void push(char s)
-{
-    top = top + 1;
-    stack[top] = s;
-}
-
-char pop()
-{
-    char item;
-    item = stack[top];
-    top--;
-    return (item);
-}
-
-int precede(char c)
-{
-    if (c == 47) // Division(/)
-        return (5);
-
-    if (c == 42) // Multiplication(*)
-        return (4);
-
-    if (c == 43) //Addition(+)
-        return (3);
-
-    else
-        return (2);
-}
-
-int main()
-{
-    printf("Name: Tushar Kamboj \nRoll No: 1816110225 \n");
-    char prefix[10];
-    int l, i = 0, j = 0;
-    char s, temp;
-
-    printf("infix string: ");
-    puts(str);
-
-    l = strlen(str);
-    push('#');
-
-    while (i < l)
-    {
-        s = str[i];
-        switch (s)
-        {
-        case '(':
-            push(s);
-            break;
-
-        case ')':
-            temp = pop();
-            while (temp != '(')
-            {
-                prefix[j] = temp;
-                j++;
-                temp = pop();
-            }
-            break;
-
-        case '+':
-        case '-':
-        case '*':
-        case '/':
-            while (precede(stack[top]) >= precede(s))
-            {
-                temp = pop();
-                prefix[j] = temp;
-                j++;
-            }
-            push(s);
-            break;
-
-        default:
-            prefix[j++] = s;
-            break;
-        }
-        i++;
-    }
-
-    while (top > 0)
-    {
-        temp = pop();
-        prefix[j++] = temp;
-    }
-
-    prefix[j++] = '\0';
-
-    printf("\nprefix string : ");
-
-    for (i = 6; i >= 0; i--)
-        printf("%c", prefix[i]);
-    return 0;
+void infixtoprefix(char infix[20],char prefix[20]) {
+	int i,j=0;
+	char symbol;
+	stack[++top]='#';
+	reverse(infix);
+	for (i=0;i<strlen(infix);i++) {
+		symbol=infix[i];
+		if (isOperator(symbol)==0) {
+			prefix[j]=symbol;
+			j++;
+		} else {
+			if (symbol==')') {
+				push(symbol);
+			} else if(symbol == '(') {
+				while (stack[top]!=')') {
+					prefix[j]=pop();
+					j++;
+				}
+				pop();
+			} else {
+				if (prcd(stack[top])<=prcd(symbol)) {
+					push(symbol);
+				} else {
+					while(prcd(stack[top])>=prcd(symbol)) {
+						prefix[j]=pop();
+						j++;
+					}
+					push(symbol);
+				}
+				//end for else
+			}
+		}
+		//end for else
+	}
+	//end for for
+	while (stack[top]!='#') {
+		prefix[j]=pop();
+		j++;
+	}
+	prefix[j]='\0';
 }
